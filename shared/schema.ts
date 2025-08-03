@@ -18,6 +18,7 @@ export const maskSchema = z.object({
     height: z.number(),
   }),
   confidence: z.number(),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(), // hex color
 });
 
 export const processedImageSchema = z.object({

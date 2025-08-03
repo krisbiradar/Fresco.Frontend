@@ -67,17 +67,20 @@ export function ImageCanvas({
     }
   };
 
+   // NEW: Effect to set canvas size after image loads
+  useEffect(() => {
+    if (imageLoaded && imageRef.current && canvasRef.current) {
+      const img = imageRef.current;
+      const canvas = canvasRef.current;
+
+      // Set canvas resolution to match the image's natural resolution
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+    }
+  }, [imageLoaded]);
+
   // Handle image load
   const handleImageLoad = () => {
-    if (!imageRef.current || !canvasRef.current) return;
-    
-    const canvas = canvasRef.current;
-    const img = imageRef.current;
-    
-    // Set canvas size to match image
-    canvas.width = img.naturalWidth;
-    canvas.height = img.naturalHeight;
-    
     setImageLoaded(true);
   };
 
@@ -135,6 +138,7 @@ export function ImageCanvas({
 
         <div className="relative bg-gray-100 rounded-lg overflow-hidden">
           <img
+            id="base-image"
             ref={imageRef}
             src={image.url}
             alt="Building image for wall painting"
@@ -145,6 +149,7 @@ export function ImageCanvas({
           
           {imageLoaded && (
             <canvas
+              id="mask-canvas"
               ref={canvasRef}
               className="absolute top-0 left-0 w-full h-full cursor-crosshair"
               onClick={handleCanvasClick}

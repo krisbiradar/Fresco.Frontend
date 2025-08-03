@@ -15,7 +15,13 @@ export function drawMasks(
     // In real implementation, this would decode and draw the actual mask data
     ctx.save();
     
-    if (isSelected) {
+    if (mask.color) {
+      // If mask has a color applied, use it
+      const color = mask.color;
+      ctx.fillStyle = `${color}80`; // 50% opacity
+      ctx.strokeStyle = color;
+      ctx.lineWidth = isSelected ? 2 : 1;
+    } else if (isSelected) {
       ctx.fillStyle = 'rgba(59, 130, 246, 0.3)'; // blue for selected
       ctx.strokeStyle = 'rgba(59, 130, 246, 0.8)';
       ctx.lineWidth = 2;

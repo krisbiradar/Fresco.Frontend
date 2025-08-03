@@ -38,7 +38,7 @@ export default function Home() {
                 <PaintbrushVertical className="text-primary-foreground text-lg" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">WallPainter AI</h1>
+                <h1 className="text-xl font-bold text-gray-900">Fresco</h1>
                 <p className="text-sm text-gray-500">Segment and paint building walls</p>
               </div>
             </div>

@@ -4,6 +4,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Mask, GenerateMasksResponse } from "@shared/schema";
 
+
 interface UploadedImage {
   id: string;
   url: string;
@@ -19,7 +20,7 @@ export function useImageEditor() {
   const [selectedColor, setSelectedColor] = useState<string>("#3B82F6");
   const [showMasks, setShowMasks] = useState<boolean>(true);
   const [showAllMasks, setShowAllMasks] = useState<boolean>(false);
-  
+
   const { toast } = useToast();
 
   // Upload image mutation
@@ -27,7 +28,7 @@ export function useImageEditor() {
     mutationFn: async (file: File) => {
       const formData = new FormData();
       formData.append("image", file);
-      
+
       const response = await apiRequest("POST", "/api/upload", formData);
       return response.json();
     },
@@ -35,7 +36,7 @@ export function useImageEditor() {
       if (uploadedImage?.file) {
         URL.revokeObjectURL(uploadedImage.url);
       }
-      
+
       const imageUrl = `/api/images/${data.imageId}`;
       setUploadedImage({
         id: data.imageId,
@@ -46,7 +47,7 @@ export function useImageEditor() {
       });
       setMasks([]);
       setSelectedMasks([]);
-      
+
       toast({
         title: "Success",
         description: "Image uploaded successfully!",
@@ -64,16 +65,18 @@ export function useImageEditor() {
   // Generate masks mutation
   const generateMasksMutation = useMutation({
     mutationFn: async (imageId: string) => {
-      const response = await apiRequest("POST", "/api/generate-masks", { imageId });
+      const formData = new FormData();
+      formData.append("file", uploadedImage?.file || new File([], "temp.png"));
+      const response = await apiRequest("POST", "/api/v1/generate-masks", formData);
       return response.json() as Promise<GenerateMasksResponse>;
     },
     onSuccess: (data) => {
       setMasks(data.masks);
       setSelectedMasks([]);
-      
+
       toast({
         title: "Masks Generated",
-        description: `Generated ${data.masks.length} masks in ${(data.processingTime / 1000).toFixed(1)}s`,
+        description: `Generated ${data.masks.length} masks in ${(data.processingTime).toFixed(1)}s`,
       });
     },
     onError: (error) => {
@@ -91,7 +94,7 @@ export function useImageEditor() {
       if (!uploadedImage || selectedMasks.length === 0) {
         throw new Error("No image or masks selected");
       }
-      
+
       const response = await apiRequest("POST", "/api/apply-color", {
         imageId: uploadedImage.id,
         maskIds: selectedMasks,
@@ -100,6 +103,11 @@ export function useImageEditor() {
       return response.json();
     },
     onSuccess: () => {
+      setMasks(prevMasks => prevMasks.map(mask =>
+        selectedMasks.includes(mask.id)
+          ? { ...mask, color: selectedColor }
+          : mask
+      ));
       toast({
         title: "Color Applied",
         description: `Applied ${selectedColor} to ${selectedMasks.length} masks`,
@@ -128,7 +136,7 @@ export function useImageEditor() {
         file,
       };
     });
-    
+
     uploadMutation.mutate(file);
   }, [uploadMutation]);
 
@@ -161,27 +169,35 @@ export function useImageEditor() {
   }, []);
 
   const downloadImage = useCallback(async () => {
-    if (!uploadedImage?.id) return;
-    
+
     try {
-      const response = await fetch(`/api/generate-final-image/${uploadedImage.id}`, {
-        method: "POST",
-      });
-      
-      if (!response.ok) {
-        throw new Error("Failed to generate final image");
+      // 1. Get the <img> element and the colored masks <canvas>
+      const imageElement = document.getElementById('base-image') as HTMLImageElement | null;
+      const coloredCanvas = document.getElementById('mask-canvas') as HTMLCanvasElement | null;
+
+      if (!(imageElement instanceof HTMLImageElement) || !(coloredCanvas instanceof HTMLCanvasElement)) {
+        console.error("Could not find the required image or canvas elements.");
+        return;
       }
-      
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `painted-${uploadedImage.file.name}`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      
+
+      // 2. Create a temporary canvas
+      const tempCanvas = document.createElement('canvas');
+      // Use the natural, full resolution of the image
+      tempCanvas.width = imageElement.naturalWidth;
+      tempCanvas.height = imageElement.naturalHeight;
+      const ctx = tempCanvas.getContext('2d');
+
+      if (!ctx) return;
+
+      // 3. Draw the <img> element FIRST, then the colored canvas on TOP
+      ctx.drawImage(imageElement, 0, 0);
+      ctx.drawImage(coloredCanvas, 0, 0);
+
+      // 4. Trigger the download from the combined canvas
+      const link = document.createElement('a');
+      link.download = 'painted-image.png';
+      link.href = tempCanvas.toDataURL("image/png");
+      link.click();
       toast({
         title: "Download Complete",
         description: "Your painted image has been downloaded!",
